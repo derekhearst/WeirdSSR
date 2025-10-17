@@ -77,7 +77,8 @@ Repository: This project (WeirdSSR)
 [Grid IS in the DOM, parent lifecycle works, but child onMount never fires]
 ```
 
-**Critical Discovery**: 
+**Critical Discovery**:
+
 - ✅ Parent `onMount` works
 - ✅ Parent `$effect` works (runs twice!)
 - ✅ Child components are in DOM
