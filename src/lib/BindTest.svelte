@@ -6,11 +6,32 @@
 
 	console.log('🔵 BindTest: Script executing')
 
+	// Try to inspect DOM even if template crashes
+	setTimeout(() => {
+		console.log('⏱️ BindTest: setTimeout fired (after potential crash)')
+		const manualQuery = document.querySelector('.target-element')
+		console.log('🔍 BindTest: Manual querySelector in setTimeout:', manualQuery)
+		console.log('🔍 BindTest: Manual query type:', manualQuery?.constructor?.name)
+		
+		const bindTestContainer = document.querySelector('.bind-test')
+		console.log('🔍 BindTest: Parent container:', bindTestContainer)
+		if (bindTestContainer) {
+			console.log('🔍 BindTest: Parent children count:', bindTestContainer.children.length)
+			console.log('🔍 BindTest: Parent childNodes:', Array.from(bindTestContainer.childNodes).map(n => `${n.constructor.name}: "${n.textContent?.trim().substring(0, 30)}"`))
+		}
+	}, 100)
+
 	onMount(() => {
 		console.log('🟡 BindTest: onMount fired')
 		console.log('🟡 BindTest: divElement exists:', !!divElement)
 		console.log('🟡 BindTest: divElement type:', divElement?.constructor?.name)
 		console.log('🟡 BindTest: divElement instanceof HTMLDivElement:', divElement instanceof HTMLDivElement)
+		
+		// Manual DOM query
+		const manualQuery = document.querySelector('.target-element')
+		console.log('🔍 BindTest: Manual querySelector(".target-element"):', manualQuery)
+		console.log('🔍 BindTest: Manual query type:', manualQuery?.constructor?.name)
+		
 		mounted = true
 	})
 
@@ -20,19 +41,26 @@
 		console.log('🟣 BindTest: divElement exists:', !!divElement)
 		console.log('🟣 BindTest: divElement type:', divElement?.constructor?.name)
 		console.log('🟣 BindTest: divElement instanceof HTMLDivElement:', divElement instanceof HTMLDivElement)
+		
+		// Manual DOM query in effect
+		const manualQuery = document.querySelector('.target-element')
+		console.log('🔍 BindTest: Manual querySelector in $effect:', manualQuery)
+		console.log('🔍 BindTest: Manual query type:', manualQuery?.constructor?.name)
+		
+		// Inspect parent container
+		const bindTestContainer = document.querySelector('.bind-test')
+		console.log('🔍 BindTest: Parent container:', bindTestContainer)
+		if (bindTestContainer) {
+			console.log('🔍 BindTest: Parent children count:', bindTestContainer.children.length)
+			console.log('🔍 BindTest: Parent childNodes:', Array.from(bindTestContainer.childNodes).map(n => `${n.constructor.name}: "${n.textContent?.trim().substring(0, 30)}"`))
+		}
 	})
 </script>
 
 <div class="bind-test">
-	<h3>Bind Test Component</h3>
-	<div bind:this={divElement} class="target-element">
-		This is the target element that should be bound
-	</div>
-	<div class="status">
-		<p>Mounted: {mounted ? '✅' : '❌'}</p>
-		<p>Element Type: {divElement?.constructor?.name ?? 'undefined'}</p>
-		<p>Is HTMLDivElement: {divElement instanceof HTMLDivElement ? '✅' : '❌'}</p>
-	</div>
+	<h3>Bind Test Component - Can you see this text?</h3>
+	<div class="target-element">Target element with text</div>
+	<div class="status">Status div with text</div>
 </div>
 
 <style>
@@ -57,9 +85,5 @@
 		padding: 0.5rem;
 		border-radius: 4px;
 		font-family: monospace;
-	}
-
-	.status p {
-		margin: 0.25rem 0;
 	}
 </style>

@@ -1,17 +1,22 @@
 # SvelteKit Child Component DOM Creation Bug
 
-Minimal reproduction for a bug where child component DOM elements are never created during client-side navigation when the parent uses `$derived(await remoteFunction())`.
+Minimal reproduction for a bug where child component DOM elements are never created during **full page reload (F5)** when the parent uses `$derived(await remoteFunction())`.
 
 ## The Bug
 
 When a parent component uses `$derived(await remoteFunction())`:
 
-- ✅ **First load**: Everything works perfectly
-- ❌ **Reload/navigation**: Child component DOM never gets created
-  - Child element slots remain as Comment nodes
-  - `bind:this` binds to Comment instead of actual elements
-  - `onMount` never fires
-  - Causes `DOMException: Node.appendChild: Cannot add children to a Comment`
+- ✅ **Initial SSR load**: Works perfectly
+- ✅ **Hot Module Reload (HMR)**: Works perfectly
+- ❌ **Full page reload (F5)**: Child component DOM never gets created
+- ❌ **Client-side navigation**: Child component DOM never gets created
+
+**What happens on reload:**
+
+- Child element slots remain as Comment placeholder nodes
+- `document.querySelector()` returns `null` for child elements
+- `bind:this` crashes trying to bind to Comment nodes
+- DOM manipulation fails with `DOMException: Node.appendChild: Cannot add children to a Comment`
 
 ## How to Reproduce
 
@@ -21,15 +26,25 @@ bun run dev  # or: bun run build && bun run preview
 ```
 
 1. Open http://localhost:5173 (or :4173 for preview)
-2. **First load works ✅**
-3. **Press F5 to reload** - Component crashes ❌
+2. **First load works ✅** - Component renders perfectly
+3. **Save a file (HMR) ✅** - Component still works
+4. **Press F5 to reload ❌** - Component DOM never created
 
 ## Check Console
 
-The console will show:
+### On Full Page Reload (F5) - BROKEN:
 
-- First load: `divElement type: HTMLDivElement` ✅
-- After reload: `DOMException: Node.appendChild: Cannot add children to a Comment` ❌
+```
+🔍 BindTest: Manual querySelector(".target-element"): null ❌
+🔍 BindTest: Parent container: null ❌
+```
+
+### After Hot Module Reload (save file) - WORKS:
+
+```
+🔍 BindTest: Manual querySelector: <div class="target-element"> ✅
+🔍 BindTest: Manual query type: HTMLDivElement ✅
+```
 
 ## Environment
 

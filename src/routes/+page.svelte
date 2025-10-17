@@ -39,14 +39,10 @@
 		{#snippet pending()}
 			<p>Loading...</p>
 		{/snippet}
+
 		<BindTest />
 	</svelte:boundary>
 
-	<div class="workarounds">
-		<h3>Workarounds</h3>
-		<p><strong>Option 1:</strong> Remove <code>$derived</code> wrapper: <code>const data = await getData()</code></p>
-		<p><strong>Option 2:</strong> Load data in <code>onMount</code> instead of at component level</p>
-	</div>
 </div>
 
 <style>
