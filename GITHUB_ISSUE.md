@@ -6,7 +6,7 @@ Child component `onMount` never fires when parent uses `$derived(await remoteFun
 
 ## Description
 
-Components using `$derived(await remoteFunction())` work correctly in development mode but cause child component `onMount` lifecycle hooks to never fire in production builds.
+When a parent component uses `$derived(await remoteFunction())`, **child component `onMount` lifecycle hooks never fire in production builds**, while all other lifecycle hooks work normally.
 
 ### The Issue
 
@@ -14,12 +14,14 @@ When using the pattern `const data = $derived(await remoteFunction())` in a pare
 
 - ✅ Parent component renders successfully
 - ✅ Parent `onMount` fires
+- ✅ Parent `$effect` fires
 - ✅ Child components are in the DOM
 - ❌ **Child component `onMount` hooks never fire**
+- ✅ Child component `$effect` DOES fire (if used)
 
-This particularly affects components like AG Grid that rely on `onMount` to initialize.
+This is **very specific**: Only child `onMount` is affected. Parent lifecycle hooks and child `$effect` work fine.
 
-**This is NOT a hydration mismatch** - the DOM is correct, but the lifecycle hooks don't fire.
+**This is NOT a hydration mismatch** - the DOM is correct, and most lifecycle hooks work.
 
 ### Minimal Reproduction
 
@@ -66,15 +68,22 @@ Repository: This project (WeirdSSR)
 ```
 🔵 Component: Script executing
 🟢 Component: Locations loaded 5 items
-🟡 Component: onMount called
-🟡 GridApi exists: false
-🟡 Grid wrapper in DOM: true
+🟡 Component: onMount called                    ✅ Parent onMount works
+🟡 Grid wrapper in DOM: true                    ✅ Child in DOM
 🟡 Grid wrapper children: 3
-🟡 Grid wrapper innerHTML length: 102
-[Grid IS in the DOM, but its onMount never fires - no Grid initialization logs]
+� EffectComponent: $effect running             ✅ Parent $effect works
+🟣 Grid wrapper in DOM: true                    ✅ Child visible to $effect
+🟣 Grid wrapper children: 3
+[Grid IS in the DOM, parent lifecycle works, but child onMount never fires]
 ```
 
-**Key Discovery**: The Grid component IS rendered in the DOM with correct structure, but its `onMount` lifecycle hook never executes.
+**Critical Discovery**: 
+- ✅ Parent `onMount` works
+- ✅ Parent `$effect` works (runs twice!)
+- ✅ Child components are in DOM
+- ❌ **Only child `onMount` is broken**
+
+If child uses `$effect` instead of `onMount`, it would work. But libraries like AG Grid require `onMount`.
 
 ### Root Cause
 
