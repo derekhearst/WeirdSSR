@@ -2,11 +2,11 @@
 
 ## Title
 
-Child component `onMount` never fires when parent uses `$derived(await remoteFunction())` in production builds
+Child component hydration broken when parent uses `$derived(await remoteFunction())` - `onMount` never fires, `bind:this` binds to wrong nodes
 
 ## Description
 
-When a parent component uses `$derived(await remoteFunction())`, **child component `onMount` lifecycle hooks never fire in production builds**, while all other lifecycle hooks work normally.
+When a parent component uses `$derived(await remoteFunction())`, **child components fail to properly hydrate in production builds**: `onMount` never fires and `bind:this` binds to Text/Comment nodes instead of actual DOM elements.
 
 ### The Issue
 
@@ -30,8 +30,12 @@ Repository: This project (WeirdSSR)
 ### Steps to Reproduce
 
 1. `bun install`
-2. `bun run dev` - Works correctly ✅
-3. `bun run build && bun run preview` - Fails to hydrate ❌
+2. `bun run build && bun run preview` (or even `bun run dev`)
+3. Navigate to `/test-bind`
+4. **First load**: Works correctly ✅
+5. **Reload page or navigate away and back**: Fails ❌
+
+**Critical Finding**: The bug occurs on **client-side navigation/reload**, not just initial SSR hydration!
 
 ### Expected Behavior
 
@@ -65,32 +69,55 @@ Repository: This project (WeirdSSR)
 
 ### Console Logs in Production (Fails)
 
+**First Load** (Works):
+
 ```
-🔵 Component: Script executing
-🟢 Component: Locations loaded 5 items
-🟡 Component: onMount called                    ✅ Parent onMount works
-🟡 Grid wrapper in DOM: true                    ✅ Child in DOM
-🟡 Grid wrapper children: 3
-� EffectComponent: $effect running             ✅ Parent $effect works
-🟣 Grid wrapper in DOM: true                    ✅ Child visible to $effect
-🟣 Grid wrapper children: 3
-[Grid IS in the DOM, parent lifecycle works, but child onMount never fires]
+🔵 BindTestPage: Script executing
+🟢 BindTestPage: Locations loaded 5 items
+� BindTest: Script executing
+🟡 BindTest: onMount fired                          ✅
+🟡 BindTest: divElement type: HTMLDivElement        ✅
+🟣 BindTest: $effect running                        ✅
+🟣 BindTest: divElement type: HTMLDivElement        ✅
+```
+
+**Reload/Navigation** (Fails):
+
+```
+🔵 BindTestPage: Script executing
+� BindTestPage: Locations loaded 5 items
+🔵 BindTest: Script executing
+Uncaught DOMException: Node.appendChild: Cannot add children to a Comment
+[onMount never fires, $effect never fires, component crashes]
 ```
 
 **Critical Discovery**:
 
-- ✅ Parent `onMount` works
-- ✅ Parent `$effect` works (runs twice!)
-- ✅ Child components are in DOM
-- ❌ **Only child `onMount` is broken**
+- ✅ **First page load works perfectly**
+- ❌ **Reload or client-side navigation breaks everything**
+- ❌ Child `onMount` never fires on reload
+- ❌ Child `$effect` never fires on reload (crashes before it can run)
+- ❌ **Child `bind:this` binds to Comment nodes, causing DOMException**
+- ❌ **Happens in both dev AND production**
 
-If child uses `$effect` instead of `onMount`, it would work. But libraries like AG Grid require `onMount`.
+The error:
+
+```
+DOMException: Node.appendChild: Cannot add children to a Comment
+```
+
+This proves the issue is with **client-side navigation/reload when parent has async derived state**, not initial SSR hydration.
 
 ### Root Cause
 
-The `$derived` rune with `await` in the parent component appears to prevent child component lifecycle hooks from executing in production builds. The components render correctly in the DOM, but their `onMount` callbacks never fire.
+When a parent component uses `$derived(await remoteFunction())`, child components fail to properly render on **client-side navigation or page reload**:
 
-This suggests the issue is with **lifecycle management** rather than hydration mismatch.
+1. **First load**: Everything works perfectly
+2. **Reload/Navigation**: Child components crash with `DOMException: Node.appendChild: Cannot add children to a Comment`
+3. Child component DOM nodes remain as Comment placeholders instead of being replaced with actual elements
+4. Any attempt to append children to these Comment nodes causes a crash
+
+This suggests the issue is with how Svelte handles **re-rendering of async components** during client-side navigation, not initial SSR.
 
 ### Workaround 1: Remove $derived
 
